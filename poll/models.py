@@ -21,8 +21,8 @@ from generic.sorters import SimpleSorter
 
 from rapidsms.contrib.locations.models import Location
 from rapidsms.contrib.locations.nested import models as nested_models
-from rapidsms_httprouter.models import Message, MessageBatch
-# from rapidsms.contrib.messagelog.models import Message
+#from rapidsms_httprouter.models import Message, MessageBatch
+from rapidsms.router.db.models import Message
 
 from django.conf import settings
 from django.db import models

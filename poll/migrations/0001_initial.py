@@ -1,16 +1,13 @@
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 import datetime
 from south.db import db
 from south.v2 import SchemaMigration
 from django.db import models
 
+
 class Migration(SchemaMigration):
-    depends_on = (
-        ("eav", "0001_initial"),
-         ("rapidsms_httprouter", "0001_initial"),)
 
     def forwards(self, orm):
-        
         # Adding model 'ResponseCategory'
         db.create_table('poll_responsecategory', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
@@ -29,8 +26,9 @@ class Migration(SchemaMigration):
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
             ('start_date', self.gf('django.db.models.fields.DateTimeField')(null=True)),
             ('end_date', self.gf('django.db.models.fields.DateTimeField')(null=True)),
-            ('type', self.gf('django.db.models.fields.SlugField')(db_index=True, max_length=8, null=True, blank=True)),
-            ('default_response', self.gf('django.db.models.fields.CharField')(max_length=160)),
+            ('type', self.gf('django.db.models.fields.SlugField')(max_length=8, null=True, blank=True)),
+            ('default_response', self.gf('django.db.models.fields.CharField')(max_length=160, null=True, blank=True)),
+            ('response_type', self.gf('django.db.models.fields.CharField')(default='a', max_length=1, null=True, blank=True)),
         ))
         db.send_create_signal('poll', ['Poll'])
 
@@ -38,7 +36,7 @@ class Migration(SchemaMigration):
         db.create_table('poll_poll_messages', (
             ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
             ('poll', models.ForeignKey(orm['poll.poll'], null=False)),
-            ('message', models.ForeignKey(orm['rapidsms_httprouter.message'], null=False))
+            ('message', models.ForeignKey(orm['db.message'], null=False))
         ))
         db.create_unique('poll_poll_messages', ['poll_id', 'message_id'])
 
@@ -74,7 +72,7 @@ class Migration(SchemaMigration):
         # Adding model 'Response'
         db.create_table('poll_response', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('message', self.gf('django.db.models.fields.related.ForeignKey')(related_name='poll_responses', null=True, to=orm['rapidsms_httprouter.Message'])),
+            ('message', self.gf('django.db.models.fields.related.ForeignKey')(related_name='poll_responses', null=True, to=orm['db.Message'])),
             ('poll', self.gf('django.db.models.fields.related.ForeignKey')(related_name='responses', to=orm['poll.Poll'])),
             ('contact', self.gf('django.db.models.fields.related.ForeignKey')(blank=True, related_name='responses', null=True, to=orm['rapidsms.Contact'])),
             ('date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
@@ -89,12 +87,27 @@ class Migration(SchemaMigration):
             ('category', self.gf('django.db.models.fields.related.ForeignKey')(related_name='rules', to=orm['poll.Category'])),
             ('rule_type', self.gf('django.db.models.fields.CharField')(max_length=2)),
             ('rule_string', self.gf('django.db.models.fields.CharField')(max_length=256, null=True)),
+            ('rule', self.gf('django.db.models.fields.IntegerField')(max_length=10, null=True)),
         ))
         db.send_create_signal('poll', ['Rule'])
 
+        # Adding model 'Translation'
+        db.create_table('poll_translation', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('field', self.gf('django.db.models.fields.TextField')(db_index=True)),
+            ('language', self.gf('django.db.models.fields.CharField')(max_length=5, db_index=True)),
+            ('value', self.gf('django.db.models.fields.TextField')(blank=True)),
+        ))
+        db.send_create_signal('poll', ['Translation'])
+
+        # Adding unique constraint on 'Translation', fields ['field', 'language']
+        db.create_unique('poll_translation', ['field', 'language'])
+
 
     def backwards(self, orm):
-        
+        # Removing unique constraint on 'Translation', fields ['field', 'language']
+        db.delete_unique('poll_translation', ['field', 'language'])
+
         # Deleting model 'ResponseCategory'
         db.delete_table('poll_responsecategory')
 
@@ -118,6 +131,9 @@ class Migration(SchemaMigration):
 
         # Deleting model 'Rule'
         db.delete_table('poll_rule')
+
+        # Deleting model 'Translation'
+        db.delete_table('poll_translation')
 
 
     models = {
@@ -157,6 +173,19 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
+        'db.message': {
+            'Meta': {'object_name': 'Message'},
+            'date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
+            'delivered': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'direction': ('django.db.models.fields.CharField', [], {'max_length': '1', 'db_index': 'True'}),
+            'external_id': ('django.db.models.fields.CharField', [], {'max_length': '1024', 'blank': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'in_response_to': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'responses'", 'null': 'True', 'to': "orm['db.Message']"}),
+            'sent': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'status': ('django.db.models.fields.CharField', [], {'default': "'Q'", 'max_length': '1', 'db_index': 'True'}),
+            'text': ('django.db.models.fields.TextField', [], {}),
+            'updated': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'null': 'True', 'db_index': 'True', 'blank': 'True'})
+        },
         'eav.attribute': {
             'Meta': {'ordering': "['name']", 'unique_together': "(('site', 'slug'),)", 'object_name': 'Attribute'},
             'created': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
@@ -168,7 +197,7 @@ class Migration(SchemaMigration):
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'required': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'site': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['sites.Site']"}),
-            'slug': ('eav.fields.EavSlugField', [], {'max_length': '50', 'db_index': 'True'}),
+            'slug': ('eav.fields.EavSlugField', [], {'max_length': '50'}),
             'type': ('django.db.models.fields.CharField', [], {'max_length': '20', 'null': 'True', 'blank': 'True'})
         },
         'eav.enumgroup': {
@@ -201,9 +230,9 @@ class Migration(SchemaMigration):
         },
         'locations.location': {
             'Meta': {'object_name': 'Location'},
-            'code': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'code': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
+            'is_active': ('django.db.models.fields.NullBooleanField', [], {'default': 'True', 'null': 'True', 'blank': 'True'}),
             'level': ('django.db.models.fields.PositiveIntegerField', [], {'db_index': 'True'}),
             'lft': ('django.db.models.fields.PositiveIntegerField', [], {'db_index': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
@@ -211,6 +240,7 @@ class Migration(SchemaMigration):
             'parent_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['contenttypes.ContentType']", 'null': 'True', 'blank': 'True'}),
             'point': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['locations.Point']", 'null': 'True', 'blank': 'True'}),
             'rght': ('django.db.models.fields.PositiveIntegerField', [], {'db_index': 'True'}),
+            'status': ('django.db.models.fields.NullBooleanField', [], {'default': 'True', 'null': 'True', 'blank': 'True'}),
             'tree_id': ('django.db.models.fields.PositiveIntegerField', [], {'db_index': 'True'}),
             'tree_parent': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'children'", 'null': 'True', 'to': "orm['locations.Location']"}),
             'type': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'locations'", 'null': 'True', 'to': "orm['locations.LocationType']"})
@@ -218,7 +248,7 @@ class Migration(SchemaMigration):
         'locations.locationtype': {
             'Meta': {'object_name': 'LocationType'},
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
-            'slug': ('django.db.models.fields.SlugField', [], {'unique': 'True', 'max_length': '50', 'primary_key': 'True', 'db_index': 'True'})
+            'slug': ('django.db.models.fields.SlugField', [], {'unique': 'True', 'max_length': '50', 'primary_key': 'True'})
         },
         'locations.point': {
             'Meta': {'object_name': 'Point'},
@@ -238,17 +268,18 @@ class Migration(SchemaMigration):
             'response': ('django.db.models.fields.CharField', [], {'max_length': '160', 'null': 'True'})
         },
         'poll.poll': {
-            'Meta': {'object_name': 'Poll'},
+            'Meta': {'ordering': "['-end_date']", 'object_name': 'Poll'},
             'contacts': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'polls'", 'symmetrical': 'False', 'to': "orm['rapidsms.Contact']"}),
-            'default_response': ('django.db.models.fields.CharField', [], {'max_length': '160'}),
+            'default_response': ('django.db.models.fields.CharField', [], {'max_length': '160', 'null': 'True', 'blank': 'True'}),
             'end_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'messages': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['rapidsms_httprouter.Message']", 'null': 'True', 'symmetrical': 'False'}),
+            'messages': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['db.Message']", 'null': 'True', 'symmetrical': 'False'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
             'question': ('django.db.models.fields.CharField', [], {'max_length': '160'}),
+            'response_type': ('django.db.models.fields.CharField', [], {'default': "'a'", 'max_length': '1', 'null': 'True', 'blank': 'True'}),
             'sites': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['sites.Site']", 'symmetrical': 'False'}),
             'start_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True'}),
-            'type': ('django.db.models.fields.SlugField', [], {'db_index': 'True', 'max_length': '8', 'null': 'True', 'blank': 'True'}),
+            'type': ('django.db.models.fields.SlugField', [], {'max_length': '8', 'null': 'True', 'blank': 'True'}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"})
         },
         'poll.response': {
@@ -257,7 +288,7 @@ class Migration(SchemaMigration):
             'date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'has_errors': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'message': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'poll_responses'", 'null': 'True', 'to': "orm['rapidsms_httprouter.Message']"}),
+            'message': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'poll_responses'", 'null': 'True', 'to': "orm['db.Message']"}),
             'poll': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'responses'", 'to': "orm['poll.Poll']"})
         },
         'poll.responsecategory': {
@@ -273,20 +304,16 @@ class Migration(SchemaMigration):
             'category': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'rules'", 'to': "orm['poll.Category']"}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'regex': ('django.db.models.fields.CharField', [], {'max_length': '256'}),
+            'rule': ('django.db.models.fields.IntegerField', [], {'max_length': '10', 'null': 'True'}),
             'rule_string': ('django.db.models.fields.CharField', [], {'max_length': '256', 'null': 'True'}),
             'rule_type': ('django.db.models.fields.CharField', [], {'max_length': '2'})
         },
-        'rapidsms.backend': {
-            'Meta': {'object_name': 'Backend'},
+        'poll.translation': {
+            'Meta': {'unique_together': "(('field', 'language'),)", 'object_name': 'Translation'},
+            'field': ('django.db.models.fields.TextField', [], {'db_index': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '20'})
-        },
-        'rapidsms.connection': {
-            'Meta': {'unique_together': "(('backend', 'identity'),)", 'object_name': 'Connection'},
-            'backend': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['rapidsms.Backend']"}),
-            'contact': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['rapidsms.Contact']", 'null': 'True', 'blank': 'True'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'identity': ('django.db.models.fields.CharField', [], {'max_length': '100'})
+            'language': ('django.db.models.fields.CharField', [], {'max_length': '5', 'db_index': 'True'}),
+            'value': ('django.db.models.fields.TextField', [], {'blank': 'True'})
         },
         'rapidsms.contact': {
             'Meta': {'object_name': 'Contact'},
@@ -294,32 +321,18 @@ class Migration(SchemaMigration):
             'birthdate': ('django.db.models.fields.DateTimeField', [], {'null': 'True'}),
             'gender': ('django.db.models.fields.CharField', [], {'max_length': '1', 'null': 'True'}),
             'groups': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['auth.Group']", 'null': 'True', 'blank': 'True'}),
+            'health_facility': ('django.db.models.fields.CharField', [], {'max_length': '50', 'null': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'is_caregiver': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'language': ('django.db.models.fields.CharField', [], {'max_length': '6', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100', 'blank': 'True'}),
+            'occupation': ('django.db.models.fields.CharField', [], {'max_length': '50', 'null': 'True', 'blank': 'True'}),
             'reporting_location': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['locations.Location']", 'null': 'True', 'blank': 'True'}),
+            'subcounty': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'subcounties'", 'null': 'True', 'to': "orm['locations.Location']"}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'contact'", 'unique': 'True', 'null': 'True', 'to': "orm['auth.User']"}),
             'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'}),
             'village': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'villagers'", 'null': 'True', 'to': "orm['locations.Location']"}),
             'village_name': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'})
-        },
-        'rapidsms_httprouter.message': {
-            'Meta': {'object_name': 'Message'},
-            'application': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True'}),
-            'batch': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'messages'", 'null': 'True', 'to': "orm['rapidsms_httprouter.MessageBatch']"}),
-            'connection': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'messages'", 'to': "orm['rapidsms.Connection']"}),
-            'date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
-            'direction': ('django.db.models.fields.CharField', [], {'max_length': '1'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'in_response_to': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'responses'", 'null': 'True', 'to': "orm['rapidsms_httprouter.Message']"}),
-            'priority': ('django.db.models.fields.IntegerField', [], {'default': '10'}),
-            'status': ('django.db.models.fields.CharField', [], {'max_length': '1'}),
-            'text': ('django.db.models.fields.TextField', [], {})
-        },
-        'rapidsms_httprouter.messagebatch': {
-            'Meta': {'object_name': 'MessageBatch'},
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'status': ('django.db.models.fields.CharField', [], {'max_length': '1'})
         },
         'sites.site': {
             'Meta': {'ordering': "('domain',)", 'object_name': 'Site', 'db_table': "'django_site'"},
